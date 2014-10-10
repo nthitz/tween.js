@@ -1,15 +1,10 @@
 /**
- * @author sole / http://soledadpenades.com
- * @author mrdoob / http://mrdoob.com
- * @author Robert Eisele / http://www.xarg.org
- * @author Philippe / http://philippe.elsass.me
- * @author Robert Penner / http://www.robertpenner.com/easing_terms_of_use.html
- * @author Paul Lewis / http://www.aerotwist.com/
- * @author lechecacharro
- * @author Josh Faul / http://jocafa.com/
- * @author egraether / http://egraether.com/
- * @author endel / http://endel.me
- * @author Ben Delarre / http://delarre.net
+ * Tween.js - Licensed under the MIT license
+ * https://github.com/sole/tween.js
+ * ----------------------------------------------
+ *
+ * See https://github.com/sole/tween.js/graphs/contributors for the full list of contributors.
+ * Thank you all, you're awesome!
  */
 
 // Date.now shim for (ahem) Internet Explo(d|r)er
@@ -29,7 +24,7 @@ var TWEEN = TWEEN || ( function () {
 
 	return {
 
-		REVISION: '11dev',
+		REVISION: '14',
 
 		getAll: function () {
 
@@ -65,21 +60,19 @@ var TWEEN = TWEEN || ( function () {
 
 			if ( _tweens.length === 0 ) return false;
 
-			var i = 0, numTweens = _tweens.length;
+			var i = 0;
 
 			time = time !== undefined ? time : ( typeof window !== 'undefined' && window.performance !== undefined && window.performance.now !== undefined ? window.performance.now() : Date.now() );
 
-			while ( i < numTweens ) {
+			while ( i < _tweens.length ) {
 
 				if ( _tweens[ i ].update( time ) ) {
 
-					i ++;
+					i++;
 
 				} else {
 
 					_tweens.splice( i, 1 );
-
-					numTweens --;
 
 				}
 
@@ -101,6 +94,7 @@ TWEEN.Tween = function ( object ) {
 	var _duration = 1000;
 	var _repeat = 0;
 	var _yoyo = false;
+	var _isPlaying = false;
 	var _reversed = false;
 	var _delayTime = 0;
 	var _startTime = null;
@@ -111,6 +105,7 @@ TWEEN.Tween = function ( object ) {
 	var _onStartCallbackFired = false;
 	var _onUpdateCallback = null;
 	var _onCompleteCallback = null;
+	var _onStopCallback = null;
 
 	// Set all starting values present on the target object
 	for ( var field in object ) {
@@ -136,6 +131,8 @@ TWEEN.Tween = function ( object ) {
 	this.start = function ( time ) {
 
 		TWEEN.add( this );
+
+		_isPlaying = true;
 
 		_onStartCallbackFired = false;
 
@@ -174,8 +171,31 @@ TWEEN.Tween = function ( object ) {
 
 	this.stop = function () {
 
+		if ( !_isPlaying ) {
+			return this;
+		}
+
 		TWEEN.remove( this );
+		_isPlaying = false;
+
+		if ( _onStopCallback !== null ) {
+
+			_onStopCallback.call( _object );
+
+		}
+
+		this.stopChainedTweens();
 		return this;
+
+	};
+
+	this.stopChainedTweens = function () {
+
+		for ( var i = 0, numChainedTweens = _chainedTweens.length; i < numChainedTweens; i++ ) {
+
+			_chainedTweens[ i ].stop();
+
+		}
 
 	};
 
@@ -243,6 +263,13 @@ TWEEN.Tween = function ( object ) {
 
 	};
 
+	this.onStop = function ( callback ) {
+
+		_onStopCallback = callback;
+		return this;
+
+	};
+
 	this.update = function ( time ) {
 
 		var property;
@@ -281,13 +308,13 @@ TWEEN.Tween = function ( object ) {
 
 			} else {
 
-                // Parses relative end values with start as base (e.g.: +10, -3)
+				// Parses relative end values with start as base (e.g.: +10, -3)
 				if ( typeof(end) === "string" ) {
 					end = start + parseFloat(end, 10);
 				}
 
 				// protect against non numeric properties.
-                if ( typeof(end) === "number" ) {
+				if ( typeof(end) === "number" ) {
 					_object[ property ] = start + ( end - start ) * value;
 				}
 
@@ -320,10 +347,14 @@ TWEEN.Tween = function ( object ) {
 						var tmp = _valuesStartRepeat[ property ];
 						_valuesStartRepeat[ property ] = _valuesEnd[ property ];
 						_valuesEnd[ property ] = tmp;
-						_reversed = !_reversed;
 					}
+
 					_valuesStart[ property ] = _valuesStartRepeat[ property ];
 
+				}
+
+				if (_yoyo) {
+					_reversed = !_reversed;
 				}
 
 				_startTime = time + _delayTime;
@@ -338,7 +369,7 @@ TWEEN.Tween = function ( object ) {
 
 				}
 
-				for ( var i = 0, numChainedTweens = _chainedTweens.length; i < numChainedTweens; i ++ ) {
+				for ( var i = 0, numChainedTweens = _chainedTweens.length; i < numChainedTweens; i++ ) {
 
 					_chainedTweens[ i ].start( time );
 
@@ -722,3 +753,7 @@ TWEEN.Interpolation = {
 	}
 
 };
+
+if(typeof module !== 'undefined' && module.exports) {
+	module.exports = TWEEN;
+}
